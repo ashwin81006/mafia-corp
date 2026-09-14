@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:MafiaCorp.Client.ViewModels"
+             x:Class="MafiaCorp.Client.Views.LobbyPage"
+             BackgroundColor="{StaticResource Background}"
+             Title="Lobby">
+
+    <Grid ColumnDefinitions="4*, 6*" ColumnSpacing="12" Padding="14,10">
+        
+        <!-- Left Column: Syndicate Access Code & Controls -->
+        <VerticalStackLayout Grid.Column="0" Spacing="10" VerticalOptions="Center">
+            
+            <!-- Room Code Card (Tap to copy) -->
+            <Border BackgroundColor="{StaticResource SurfaceCard}" 
+                    Stroke="{StaticResource Secondary}" 
+                    StrokeThickness="1.5" 
+                    StrokeShape="RoundRectangle 12" 
+                    Padding="14,10">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CopyCodeCommand}" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                    <Label Text="SYNDICATE ACCESS CODE" FontSize="10" TextColor="{StaticResource Secondary}" HorizontalOptions="Center" FontAttributes="Bold" CharacterSpacing="2" />
+                    <Label Text="{Binding RoomCode}" FontSize="36" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{StaticResource OnBackground}" CharacterSpacing="6" />
+                    <Label Text="{Binding CopyStatus}" FontSize="10" TextColor="{StaticResource SecondaryGlow}" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Status Guidance Banner -->
+            <Border BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="10,6">
+                <Label Text="{Binding StartStatusText}" FontSize="11" TextColor="{StaticResource OnSurfaceMuted}" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+            </Border>
+
+            <!-- Start Game Button -->
+            <Button Text="START OPERATION" 
+                    Command="{Binding StartGameCommand}" 
+                    IsVisible="{Binding IsHost}" 
+                    IsEnabled="{Binding CanStart}"
+                    HeightRequest="46" 
+                    CornerRadius="8" 
+                    BackgroundColor="{StaticResource Primary}" 
+                    TextColor="White" 
+                    FontAttributes="Bold" 
+                    FontSize="14" />
+
+            <!-- Leave Syndicate Button -->
+            <Button Text="Leave Syndicate" 
+                    Command="{Binding LeaveLobbyCommand}" 
+                    BackgroundColor="Transparent" 
+                    TextColor="{StaticResource Error}" 
+                    HeightRequest="36" 
+                    FontSize="12" />
+        </VerticalStackLayout>
+
+        <!-- Right Column: Assembled Operatives List -->
+        <Border Grid.Column="1" 
+                BackgroundColor="{StaticResource Surface}" 
+                Stroke="{StaticResource BorderSubtle}" 
+                StrokeShape="RoundRectangle 12" 
+                Padding="12,10">
+            <Grid RowDefinitions="Auto, *">
+                
+                <!-- Members Title & Count -->
+                <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,8" VerticalOptions="Center">
+                    <Label Grid.Column="0" Text="ASSEMBLED OPERATIVES" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" CharacterSpacing="1" VerticalOptions="Center" />
+                    <Border Grid.Column="1" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderHighlight}" StrokeShape="RoundRectangle 6" Padding="6,2" VerticalOptions="Center">
+                        <Label Text="{Binding MemberCountText}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Secondary}" />
+                    </Border>
+                </Grid>
+
+                <!-- Players Collection -->
+                <CollectionView Grid.Row="1" ItemsSource="{Binding LobbyPlayers}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="{StaticResource SurfaceCard}" 
+                                    Stroke="{StaticResource BorderSubtle}" 
+                                    StrokeShape="RoundRectangle 8" 
+                                    Padding="10,6" 
+                                    Margin="0,0,0,6">
+                                <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
+                                    
+                                    <!-- Avatar -->
+                                    <Border Grid.Column="0" WidthRequest="30" HeightRequest="30" StrokeShape="RoundRectangle 15" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="Transparent" VerticalOptions="Center">
+                                        <Label Text="{Binding Initial}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Secondary}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Username -->
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center" Margin="10,0,0,0">
+                                        <Label Text="{Binding Username}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" VerticalOptions="Center" />
+                                        <Border IsVisible="{Binding IsLocalUser}" BackgroundColor="{StaticResource Secondary}" StrokeShape="RoundRectangle 4" Stroke="Transparent" Padding="4,1" VerticalOptions="Center">
+                                            <Label Text="YOU" FontSize="8" FontAttributes="Bold" TextColor="Black" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <!-- Host Crown -->
+                                    <Border Grid.Column="2" IsVisible="{Binding IsHost}" BackgroundColor="#FFB300" StrokeShape="RoundRectangle 4" Stroke="Transparent" Padding="5,1" VerticalOptions="Center">
+                                        <Label Text="👑 HOST" FontSize="9" FontAttributes="Bold" TextColor="Black" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+    </Grid>
+</ContentPage>

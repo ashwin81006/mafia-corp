@@ -1,0 +1,25 @@
+.gradle/
+build/
+bin/
+out/
+.settings/
+.classpath
+.project
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Ignore ZIP files and archives
+*.zip
+*.rar
+*.tar.gz
+*.7z
+
+# Ignore large downloaded SDKs and unneeded LibGDX folders
+jdk-*/
+gradle-*/
+android/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar

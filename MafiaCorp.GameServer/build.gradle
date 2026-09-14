@@ -1,0 +1,38 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+allprojects {
+    apply plugin: "eclipse"
+    apply plugin: "idea"
+}
+
+project(":server") {
+    apply plugin: "java-library"
+    apply plugin: "application"
+    
+    application {
+        mainClass = "com.mafiacorp.server.GameServer"
+    }
+    
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        implementation "com.google.code.gson:gson:2.10.1"
+    }
+
+    jar {
+        manifest {
+            attributes 'Main-Class': 'com.mafiacorp.server.GameServer'
+        }
+        from {
+            configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+}

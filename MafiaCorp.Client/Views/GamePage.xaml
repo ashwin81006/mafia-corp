@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:MafiaCorp.Client.ViewModels"
+             x:Class="MafiaCorp.Client.Views.GamePage"
+             BackgroundColor="{StaticResource Background}"
+             Title="Game">
+
+    <Grid RowDefinitions="Auto, *" ColumnDefinitions="4.5*, 5.5*" ColumnSpacing="10" Padding="12,8" RowSpacing="8">
+        
+        <!-- Header: Spans full width across top -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="10,6">
+            <Grid ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="10" VerticalOptions="Center">
+                
+                <!-- Role Chip -->
+                <Border Grid.Column="0" BackgroundColor="{Binding RoleColor}" StrokeShape="RoundRectangle 6" Stroke="Transparent" Padding="8,4" VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
+                        <Label Text="{Binding RoleIcon}" FontSize="13" VerticalOptions="Center" />
+                        <Label Text="{Binding Role}" FontSize="12" FontAttributes="Bold" TextColor="White" TextTransform="Uppercase" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Phase & Timer Pill -->
+                <Border Grid.Column="1" BackgroundColor="{Binding PhaseBadgeColor}" StrokeShape="RoundRectangle 6" Stroke="Transparent" Padding="8,4" HorizontalOptions="Start" VerticalOptions="Center">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <Label Text="{Binding PhaseIcon}" FontSize="13" VerticalOptions="Center" />
+                        <Label Text="{Binding Phase}" FontSize="12" FontAttributes="Bold" TextColor="White" TextTransform="Uppercase" VerticalOptions="Center" />
+                        <Label Text="•" FontSize="11" TextColor="White" Opacity="0.7" VerticalOptions="Center" />
+                        <Label Text="{Binding TimerText}" FontSize="13" FontAttributes="Bold" TextColor="#FFE082" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Phase Guidance Text -->
+                <Label Grid.Column="2" Text="{Binding PhaseDescription}" FontSize="11" TextColor="{StaticResource Secondary}" VerticalOptions="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+
+                <!-- Exit Button -->
+                <Button Grid.Column="3" Text="Exit" Command="{Binding ReturnToMainMenuCommand}" BackgroundColor="#B71C1C" TextColor="White" FontSize="11" FontAttributes="Bold" CornerRadius="6" HeightRequest="30" Padding="10,0" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Left Column: Players Roster & Action Target -->
+        <Border Grid.Row="1" Grid.Column="0" BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="10,8">
+            <Grid RowDefinitions="Auto, *, Auto" RowSpacing="6">
+                
+                <!-- Roster Segmented Tabs: ALIVE vs DEAD -->
+                <Grid Grid.Row="0" ColumnDefinitions="*, *" ColumnSpacing="6">
+                    <Button Grid.Column="0" 
+                            Text="{Binding AliveTabTitle}" 
+                            Command="{Binding ShowAliveRosterCommand}"
+                            BackgroundColor="{Binding AliveTabBg}"
+                            TextColor="{Binding AliveTabText}"
+                            FontAttributes="Bold"
+                            FontSize="11"
+                            HeightRequest="32"
+                            CornerRadius="6"
+                            Padding="4,0" />
+                    <Button Grid.Column="1" 
+                            Text="{Binding DeadTabTitle}" 
+                            Command="{Binding ShowDeadRosterCommand}"
+                            BackgroundColor="{Binding DeadTabBg}"
+                            TextColor="{Binding DeadTabText}"
+                            FontAttributes="Bold"
+                            FontSize="11"
+                            HeightRequest="32"
+                            CornerRadius="6"
+                            Padding="4,0" />
+                </Grid>
+
+                <!-- Alive Players Collection -->
+                <CollectionView Grid.Row="1" 
+                                ItemsSource="{Binding AlivePlayers}" 
+                                SelectionMode="Single" 
+                                SelectedItem="{Binding SelectedPlayer}"
+                                IsVisible="{Binding IsShowingAliveRoster}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="{StaticResource SurfaceCard}" 
+                                    Stroke="{StaticResource BorderSubtle}" 
+                                    StrokeShape="RoundRectangle 8" 
+                                    Padding="8,6" 
+                                    Margin="0,0,0,4">
+                                <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
+                                    <!-- Avatar -->
+                                    <Border Grid.Column="0" WidthRequest="28" HeightRequest="28" StrokeShape="RoundRectangle 14" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="Transparent" VerticalOptions="Center">
+                                        <Label Text="{Binding Initial}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Secondary}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Username -->
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center" Margin="8,0,0,0">
+                                        <Label Text="{Binding Username}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" VerticalOptions="Center" />
+                                        <Border IsVisible="{Binding IsLocalPlayer}" BackgroundColor="{StaticResource Secondary}" StrokeShape="RoundRectangle 4" Stroke="Transparent" Padding="4,1" VerticalOptions="Center">
+                                            <Label Text="YOU" FontSize="8" FontAttributes="Bold" TextColor="Black" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <!-- Alive Indicator -->
+                                    <Label Grid.Column="2" Text="🟢" FontSize="10" VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="6" Padding="20">
+                            <Label Text="No living citizens remaining." FontSize="12" TextColor="#71717A" HorizontalOptions="Center" FontAttributes="Italic" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <!-- Dead Players Collection -->
+                <CollectionView Grid.Row="1" 
+                                ItemsSource="{Binding DeadPlayers}" 
+                                SelectionMode="None"
+                                IsVisible="{Binding IsShowingDeadRoster}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="#161214" 
+                                    Stroke="#3B1E22" 
+                                    StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 8" 
+                                    Padding="8,6" 
+                                    Margin="0,0,0,4">
+                                <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
+                                    <!-- Tombstone Icon -->
+                                    <Border Grid.Column="0" WidthRequest="28" HeightRequest="28" StrokeShape="RoundRectangle 14" BackgroundColor="#2A1418" Stroke="Transparent" VerticalOptions="Center">
+                                        <Label Text="💀" FontSize="12" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Username & YOU badge -->
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center" Margin="8,0,0,0">
+                                        <Label Text="{Binding Username}" FontSize="13" FontAttributes="Bold" TextColor="#71717A" TextDecorations="Strikethrough" VerticalOptions="Center" />
+                                        <Border IsVisible="{Binding IsLocalPlayer}" BackgroundColor="#3A3A4A" StrokeShape="RoundRectangle 4" Stroke="Transparent" Padding="4,1" VerticalOptions="Center">
+                                            <Label Text="YOU" FontSize="8" FontAttributes="Bold" TextColor="#D1D5DB" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <!-- Revealed Role Badge -->
+                                    <Border Grid.Column="2" BackgroundColor="#2D1214" Stroke="#EF4444" StrokeThickness="1" StrokeShape="RoundRectangle 4" Padding="6,2" VerticalOptions="Center">
+                                        <Label Text="{Binding Role}" FontSize="10" FontAttributes="Bold" TextColor="#F87171" TextTransform="Uppercase" VerticalOptions="Center" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="6" Padding="20">
+                            <Label Text="🕊️" FontSize="26" HorizontalOptions="Center" />
+                            <Label Text="No casualties yet." FontSize="12" TextColor="#71717A" HorizontalOptions="Center" FontAttributes="Italic" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <!-- Action Button -->
+                <Button Grid.Row="2" 
+                        Text="{Binding ActionButtonText}" 
+                        IsEnabled="{Binding IsActionEnabled}" 
+                        Command="{Binding ActionCommand}" 
+                        HeightRequest="42" 
+                        BackgroundColor="{StaticResource Primary}" 
+                        TextColor="White" 
+                        FontAttributes="Bold" 
+                        FontSize="13" 
+                        CornerRadius="8" />
+            </Grid>
+        </Border>
+
+        <!-- Right Column: Communications & System Prompts -->
+        <Border Grid.Row="1" Grid.Column="1" BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="10,8">
+            <Grid RowDefinitions="Auto, *, Auto" RowSpacing="6">
+                <Label Grid.Row="0" Text="COMMUNICATIONS &amp; INTELLIGENCE" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource OnSurfaceMuted}" CharacterSpacing="1" />
+
+                <!-- Chat Log -->
+                <CollectionView x:Name="ChatCollectionView" 
+                                Grid.Row="1" 
+                                ItemsSource="{Binding ChatLog}"
+                                ItemSizingStrategy="MeasureAllItems">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 6" Padding="8,4" Margin="0,0,0,3">
+                                <Grid ColumnDefinitions="Auto, *" ColumnSpacing="6">
+                                    <Label Grid.Column="0" Text="{Binding TagText}" FontSize="11" TextColor="{Binding TagColor}" FontAttributes="Bold" VerticalOptions="Start" />
+                                    <Label Grid.Column="1" Text="{Binding Message}" FontSize="12" TextColor="{Binding MessageColor}" LineBreakMode="WordWrap" VerticalOptions="Start" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Chat Input Bar -->
+                <Grid Grid.Row="2" ColumnDefinitions="*, Auto" ColumnSpacing="6">
+                    <Border Grid.Column="0" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 6" Padding="8,0">
+                        <Entry Placeholder="{Binding ChatPlaceholder}" 
+                               PlaceholderColor="{StaticResource OnSurfaceMuted}"
+                               Text="{Binding ChatInput}" 
+                               TextColor="{StaticResource OnBackground}"
+                               FontSize="12"
+                               IsEnabled="{Binding IsChatEnabled}" 
+                               ReturnCommand="{Binding SendChatCommand}"
+                               HeightRequest="38"
+                               VerticalOptions="Center" />
+                    </Border>
+                    <Button Grid.Column="1" 
+                            Text="Send" 
+                            Command="{Binding SendChatCommand}" 
+                            IsEnabled="{Binding IsChatEnabled}" 
+                            BackgroundColor="{StaticResource Primary}" 
+                            TextColor="White" 
+                            FontAttributes="Bold" 
+                            HeightRequest="38" 
+                            CornerRadius="6" 
+                            Padding="14,0" 
+                            FontSize="12" />
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Game Over Modal Overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2" BackgroundColor="#EA000000" IsVisible="{Binding IsGameOver}" ZIndex="99" Padding="20">
+            <Border BackgroundColor="#16161E" Stroke="{Binding GameOverTitleColor}" StrokeThickness="2" StrokeShape="RoundRectangle 14" Padding="18,14" MaximumWidthRequest="420" MaximumHeightRequest="310" HorizontalOptions="Center" VerticalOptions="Center">
+                <ScrollView>
+                    <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Label Text="{Binding GameOverTitle}" FontSize="28" FontAttributes="Bold" TextColor="{Binding GameOverTitleColor}" HorizontalOptions="Center" />
+                        <Label Text="{Binding GameOverSubtitle}" FontSize="13" TextColor="#D1D5DB" HorizontalTextAlignment="Center" HorizontalOptions="Center" LineBreakMode="WordWrap" />
+
+                        <!-- Stats Card -->
+                        <Border BackgroundColor="#22222E" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="12,8" Margin="0,4">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding GameOverRoleText}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Secondary}" HorizontalOptions="Center" />
+                                <Label Text="{Binding GameOverStatusText}" FontSize="12" FontAttributes="Bold" TextColor="#B0BEC5" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Actions -->
+                        <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                            <Button Text="Headquarters" Command="{Binding ReturnToMainMenuCommand}" BackgroundColor="{StaticResource Primary}" TextColor="White" HeightRequest="40" CornerRadius="8" FontAttributes="Bold" FontSize="13" Padding="16,0" />
+                            <Button Text="Review Chat" Command="{Binding DismissGameOverCommand}" BackgroundColor="Transparent" TextColor="{StaticResource OnSurfaceMuted}" HeightRequest="40" FontSize="12" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+        </Grid>
+
+    </Grid>
+</ContentPage>

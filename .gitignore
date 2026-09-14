@@ -1,0 +1,121 @@
+# ==========================================
+# MafiaCorp Root .gitignore
+# Covers .NET MAUI, ASP.NET Core, Java/Gradle, Python & IDEs
+# ==========================================
+
+# ------------------------------------------
+# .NET / Visual Studio / C#
+# ------------------------------------------
+**/bin/
+**/obj/
+**/publish/
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.userprefs
+*.dbmdl
+*.jfm
+[Tt]est[Rr]esult*/
+*.trx
+appsettings.Production.json
+appsettings.Local.json
+
+# .NET MAUI & Mobile packages
+*.apk
+*.aab
+*.ipa
+*.msix
+*.appx
+*.appxbundle
+*.msixbundle
+*.cer
+*.pfx
+*.keystore
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ------------------------------------------
+# Java / Gradle (MafiaCorp.GameServer)
+# ------------------------------------------
+.gradle/
+build/
+**/build/
+out/
+**/out/
+*.class
+*.war
+*.ear
+
+# Keep Gradle Wrapper jar, ignore other jars/zips
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Eclipse
+.settings/
+.classpath
+.project
+
+# ------------------------------------------
+# Python (Simulation & Scripts)
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+
+# ------------------------------------------
+# IDEs & Editors
+# ------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# ------------------------------------------
+# Local Tools, Binaries & Tunneling
+# ------------------------------------------
+bore.exe
+cloudflared.exe
+scratch/
+
+# ------------------------------------------
+# Operating System Files
+# ------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+*.swp
+*.swo
+
+# ------------------------------------------
+# Logs
+# ------------------------------------------
+*.log

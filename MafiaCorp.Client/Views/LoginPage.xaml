@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:MafiaCorp.Client.ViewModels"
+             x:Class="MafiaCorp.Client.Views.LoginPage"
+             BackgroundColor="{StaticResource Background}"
+             Title="Login">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid Padding="20">
+            <!-- Modern Login Card -->
+            <Border BackgroundColor="{StaticResource SurfaceCard}" 
+                    Stroke="{StaticResource BorderSubtle}" 
+                    StrokeThickness="1" 
+                    StrokeShape="RoundRectangle 20" 
+                    Padding="26" 
+                    MaximumWidthRequest="380" 
+                    HorizontalOptions="Center" 
+                    VerticalOptions="Center">
+                
+                <VerticalStackLayout Spacing="16">
+                    
+                    <!-- App Branding -->
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center" Margin="0,0,0,10">
+                        <Label Text="MAFIACORP" 
+                               FontSize="32" 
+                               FontAttributes="Bold" 
+                               HorizontalOptions="Center"
+                               TextColor="{StaticResource Secondary}"
+                               CharacterSpacing="3" />
+                        <Label Text="ENTER THE UNDERWORLD" 
+                               FontSize="11" 
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{StaticResource OnSurfaceMuted}"
+                               CharacterSpacing="2" />
+                    </VerticalStackLayout>
+
+                    <!-- Username Field -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="OPERATIVE ALIAS" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource OnSurfaceMuted}" CharacterSpacing="1" />
+                        <Border BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="12,0">
+                            <Entry Placeholder="Username" 
+                                   PlaceholderColor="{StaticResource OnSurfaceMuted}"
+                                   Text="{Binding Username}" 
+                                   TextColor="{StaticResource OnBackground}"
+                                   HeightRequest="48"
+                                   ClearButtonVisibility="WhileEditing"
+                                   VerticalOptions="Center" />
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Password Field -->
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="SECURITY CREDENTIAL" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource OnSurfaceMuted}" CharacterSpacing="1" />
+                        <Border BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="12,0">
+                            <Entry Placeholder="Password" 
+                                   PlaceholderColor="{StaticResource OnSurfaceMuted}"
+                                   IsPassword="True" 
+                                   Text="{Binding Password}" 
+                                   TextColor="{StaticResource OnBackground}"
+                                   HeightRequest="48"
+                                   ClearButtonVisibility="WhileEditing"
+                                   VerticalOptions="Center" />
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Error Feedback -->
+                    <Label Text="{Binding ErrorMessage}"
+                           TextColor="{StaticResource Error}" 
+                           FontSize="12"
+                           HorizontalOptions="Center" 
+                           HorizontalTextAlignment="Center" />
+
+                    <!-- Login Button -->
+                    <Button Text="AUTHENTICATE"
+                            Command="{Binding LoginCommand}" 
+                            HeightRequest="50"
+                            CornerRadius="10"
+                            BackgroundColor="{StaticResource Primary}"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            FontSize="15"
+                            Margin="0,6,0,0" />
+
+                    <!-- Register Link -->
+                    <Button Text="Join the Syndicate (Register)"
+                            Command="{Binding GoToRegisterCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="{StaticResource Secondary}"
+                            FontAttributes="Bold"
+                            FontSize="13" />
+                            
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource Secondary}" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </ScrollView>
+</ContentPage>

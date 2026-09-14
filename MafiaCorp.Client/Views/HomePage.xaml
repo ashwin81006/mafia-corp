@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:MafiaCorp.Client.ViewModels"
+             x:Class="MafiaCorp.Client.Views.HomePage"
+             BackgroundColor="{StaticResource Background}"
+             Title="Home">
+
+    <Grid ColumnDefinitions="4.5*, 5.5*" ColumnSpacing="12" Padding="14,10">
+        
+        <!-- Left Column: Operative Profile & Stats Dossier -->
+        <Border Grid.Column="0" BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 12" Padding="12,10">
+            <Grid RowDefinitions="Auto, Auto, *">
+                
+                <!-- Profile Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center" Margin="0,0,0,10">
+                    <Border Grid.Column="0" WidthRequest="38" HeightRequest="38" StrokeShape="RoundRectangle 19" BackgroundColor="{StaticResource Primary}" Stroke="Transparent" VerticalOptions="Center">
+                        <Label Text="{Binding UserInitial}" FontSize="18" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0" Spacing="1">
+                        <Label Text="AGENT DOSSIER" FontSize="9" TextColor="{StaticResource Secondary}" FontAttributes="Bold" CharacterSpacing="1" />
+                        <Label Text="{Binding Username}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                    </VerticalStackLayout>
+                    <Label Grid.Column="2" Text="🟢 ONLINE" FontSize="9" TextColor="{StaticResource Success}" FontAttributes="Bold" VerticalOptions="Center" />
+                </Grid>
+
+                <BoxView Grid.Row="1" HeightRequest="1" Color="{StaticResource BorderSubtle}" Margin="0,0,0,8" />
+
+                <!-- Stats 2x2 Grid -->
+                <Grid Grid.Row="2" RowDefinitions="*, *" ColumnDefinitions="*, *" RowSpacing="6" ColumnSpacing="6">
+                    <!-- Matches -->
+                    <Border Grid.Row="0" Grid.Column="0" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="6,4">
+                        <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label Text="{Binding Stats.GamesPlayed, FallbackValue='0'}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" HorizontalOptions="Center" />
+                            <Label Text="Matches" FontSize="9" TextColor="{StaticResource OnSurfaceMuted}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Wins -->
+                    <Border Grid.Row="0" Grid.Column="1" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="6,4">
+                        <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label Text="{Binding Stats.GamesWon, FallbackValue='0'}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Secondary}" HorizontalOptions="Center" />
+                            <Label Text="Victories" FontSize="9" TextColor="{StaticResource OnSurfaceMuted}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Win Rate -->
+                    <Border Grid.Row="1" Grid.Column="0" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="6,4">
+                        <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
+                            <Label Text="{Binding WinRateText}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Success}" HorizontalOptions="Center" />
+                            <Label Text="Win Rate" FontSize="9" TextColor="{StaticResource OnSurfaceMuted}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Kills / Deaths -->
+                    <Border Grid.Row="1" Grid.Column="1" BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 8" Padding="6,4">
+                        <VerticalStackLayout Spacing="1" HorizontalOptions="Center" VerticalOptions="Center">
+                            <HorizontalStackLayout Spacing="2" HorizontalOptions="Center">
+                                <Label Text="{Binding Stats.Kills, FallbackValue='0'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+                                <Label Text="/" FontSize="13" TextColor="{StaticResource OnSurfaceMuted}" VerticalOptions="Center" />
+                                <Label Text="{Binding Stats.Deaths, FallbackValue='0'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnSurfaceMuted}" />
+                            </HorizontalStackLayout>
+                            <Label Text="Kills / Deaths" FontSize="9" TextColor="{StaticResource OnSurfaceMuted}" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+            </Grid>
+        </Border>
+
+        <!-- Right Column: Operations -->
+        <VerticalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
+            
+            <!-- Create Syndicate Button -->
+            <Button Text="⚔️ START A SYNDICATE (HOST)" 
+                    Command="{Binding CreateRoomCommand}" 
+                    HeightRequest="48" 
+                    CornerRadius="10" 
+                    BackgroundColor="{StaticResource Primary}" 
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    FontSize="14" />
+
+            <!-- Join Syndicate Card -->
+            <Border BackgroundColor="{StaticResource SurfaceCard}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="10,8">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="JOIN AN EXISTING SYNDICATE" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource OnSurfaceMuted}" CharacterSpacing="1" />
+                    <Grid ColumnDefinitions="*, Auto" ColumnSpacing="8">
+                        <Border Grid.Column="0" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 6" Padding="8,0">
+                            <Entry Placeholder="ROOM CODE" 
+                                   PlaceholderColor="{StaticResource OnSurfaceMuted}"
+                                   Text="{Binding RoomCodeToJoin}" 
+                                   TextColor="{StaticResource OnBackground}"
+                                   TextTransform="Uppercase" 
+                                   MaxLength="6" 
+                                   HeightRequest="40"
+                                   CharacterSpacing="3"
+                                   FontAttributes="Bold"
+                                   FontSize="13"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <Button Grid.Column="1" 
+                                Text="INFILTRATE" 
+                                Command="{Binding JoinRoomCommand}" 
+                                WidthRequest="100" 
+                                HeightRequest="40"
+                                BackgroundColor="{StaticResource Secondary}" 
+                                TextColor="Black" 
+                                FontAttributes="Bold"
+                                FontSize="12"
+                                CornerRadius="6" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Sign Out -->
+            <Button Text="Sign Out" Command="{Binding QuitCommand}" BackgroundColor="Transparent" TextColor="{StaticResource OnSurfaceMuted}" FontSize="11" HeightRequest="32" />
+        </VerticalStackLayout>
+
+    </Grid>
+</ContentPage>

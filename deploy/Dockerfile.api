@@ -1,0 +1,13 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+WORKDIR /src
+COPY ["MafiaCorp.Api/MafiaCorp.Api.csproj", "MafiaCorp.Api/"]
+RUN dotnet restore "MafiaCorp.Api/MafiaCorp.Api.csproj"
+COPY ["MafiaCorp.Api/", "MafiaCorp.Api/"]
+WORKDIR "/src/MafiaCorp.Api"
+RUN dotnet publish "MafiaCorp.Api.csproj" -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+EXPOSE 5130
+ENTRYPOINT ["dotnet", "MafiaCorp.Api.dll"]
