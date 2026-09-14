@@ -79,10 +79,16 @@ public class Messages {
         public String type = "ROLE_ASSIGNED";
         public String role;
         public List<Integer> mafiaTeammates; // Optional, sent only to Mafia
+        public List<String> mafiaPartners;
 
         public RoleAssigned(String role, List<Integer> mafiaTeammates) {
+            this(role, mafiaTeammates, null);
+        }
+
+        public RoleAssigned(String role, List<Integer> mafiaTeammates, List<String> mafiaPartners) {
             this.role = role;
             this.mafiaTeammates = mafiaTeammates;
+            this.mafiaPartners = mafiaPartners;
         }
     }
 
@@ -90,10 +96,16 @@ public class Messages {
         public String type = "PHASE_CHANGED";
         public String phase;
         public int durationSeconds;
+        public int round = 1;
         
         public PhaseChanged(String phase, int durationSeconds) {
+            this(phase, durationSeconds, 1);
+        }
+
+        public PhaseChanged(String phase, int durationSeconds, int round) {
             this.phase = phase;
             this.durationSeconds = durationSeconds;
+            this.round = round;
         }
     }
 

@@ -140,7 +140,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     room_code = sys.argv[1].upper()
-    num_bots = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+    num_bots = int(sys.argv[2]) if len(sys.argv) > 2 else 5
     
     print(f"Deploying {num_bots} AI Bots to Room {room_code}...")
     
@@ -152,7 +152,7 @@ if __name__ == "__main__":
         bots.append(b)
         time.sleep(0.4)
 
-    print(f"Successfully injected {num_bots} bots! (PC + Phone + {num_bots} bots = {num_bots + 2} players).")
+    print(f"Successfully injected {num_bots} bots! (You + {num_bots} bots = {num_bots + 1} players).")
     print("You can now click 'Start Game' from the host.")
     print("Press Ctrl+C anytime to disconnect bots.")
     try:

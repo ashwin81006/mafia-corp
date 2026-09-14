@@ -3,7 +3,6 @@ package com.mafiacorp.server.networking;
 import com.mafiacorp.server.game.GameManager;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Random;
-import java.util.function.BiConsumer;
 
 public class RoomManager {
     private final ConcurrentHashMap<String, GameManager> rooms = new ConcurrentHashMap<>();

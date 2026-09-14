@@ -27,6 +27,16 @@ public partial class GamePlayer : ObservableObject
     [NotifyPropertyChangedFor(nameof(DisplayText))]
     private string role = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CardStroke))]
+    [NotifyPropertyChangedFor(nameof(CardBackground))]
+    [NotifyPropertyChangedFor(nameof(CardStrokeThickness))]
+    private bool isSelected = false;
+
+    public Color CardStroke => IsSelected ? Color.FromArgb("#EF4444") : Color.FromArgb("#2E2E3E");
+    public Color CardBackground => IsSelected ? Color.FromArgb("#2D1C24") : Color.FromArgb("#181822");
+    public double CardStrokeThickness => IsSelected ? 2 : 1;
+
     public string Initial => !string.IsNullOrEmpty(Username) ? Username[..1].ToUpper() : "?";
 
     public string DisplayText => IsAlive 
@@ -53,6 +63,7 @@ public partial class GameViewModel : ObservableObject, IDisposable
 {
     private readonly GameClientService _gameClient;
     private CancellationTokenSource? _timerCts;
+    private CancellationTokenSource? _roleRevealCts;
 
     [ObservableProperty]
     private string role = string.Empty;
@@ -78,7 +89,19 @@ public partial class GameViewModel : ObservableObject, IDisposable
                 RoleColor = Color.FromArgb("#10B981");
                 break;
         }
-        UpdatePhaseState(Phase);
+        UpdatePhaseState(Phase, CurrentRound);
+
+        if (!IsRoleRevealVisible && !IsGameOver && !string.IsNullOrEmpty(value))
+        {
+            if (_gameClient.LastRoleAssignedJson != null)
+            {
+                ParseRoleAssignedJson(_gameClient.LastRoleAssignedJson);
+            }
+            else
+            {
+                ShowRoleRevealOverlay(value, new List<string>());
+            }
+        }
     }
 
     [ObservableProperty]
@@ -97,6 +120,12 @@ public partial class GameViewModel : ObservableObject, IDisposable
     private string phase = "Starting...";
 
     [ObservableProperty]
+    private int currentRound = 1;
+
+    [ObservableProperty]
+    private string displayPhaseName = "Starting...";
+
+    [ObservableProperty]
     private string phaseIcon = "⏳";
 
     [ObservableProperty]
@@ -110,6 +139,40 @@ public partial class GameViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private Color roleColor = Color.FromArgb("#10B981");
+
+    // Role Reveal Overlay Properties (Discord MafiaBot Style)
+    [ObservableProperty]
+    private bool isRoleRevealVisible = false;
+
+    [ObservableProperty]
+    private string roleRevealTitle = string.Empty;
+
+    [ObservableProperty]
+    private string roleRevealIcon = "👤";
+
+    [ObservableProperty]
+    private string roleRevealFactionText = string.Empty;
+
+    [ObservableProperty]
+    private Color roleRevealFactionColor = Color.FromArgb("#10B981");
+
+    [ObservableProperty]
+    private Color roleRevealFactionBgColor = Color.FromArgb("#1E3A2F");
+
+    [ObservableProperty]
+    private string roleRevealObjective = string.Empty;
+
+    [ObservableProperty]
+    private string roleRevealAbilities = string.Empty;
+
+    [ObservableProperty]
+    private string roleRevealCountdownText = "Game begins in 5s...";
+
+    [ObservableProperty]
+    private string mafiaPartnersText = string.Empty;
+
+    [ObservableProperty]
+    private bool hasMafiaPartners = false;
 
     [ObservableProperty]
     private int currentViewTab = 0;
@@ -177,6 +240,31 @@ public partial class GameViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private GamePlayer? selectedPlayer;
 
+    partial void OnSelectedPlayerChanged(GamePlayer? oldValue, GamePlayer? newValue)
+    {
+        if (oldValue != null)
+        {
+            oldValue.IsSelected = false;
+        }
+        if (newValue != null)
+        {
+            newValue.IsSelected = true;
+        }
+    }
+
+    private void ClearSelection()
+    {
+        SelectedPlayer = null;
+        foreach (var p in Players)
+        {
+            p.IsSelected = false;
+        }
+        foreach (var p in AlivePlayers)
+        {
+            p.IsSelected = false;
+        }
+    }
+
     // Game Over Results Properties
     [ObservableProperty]
     private bool isGameOver = false;
@@ -210,6 +298,15 @@ public partial class GameViewModel : ObservableObject, IDisposable
 
     public void Initialize()
     {
+        if (_gameClient.LastRoleAssignedJson != null)
+        {
+            ParseRoleAssignedJson(_gameClient.LastRoleAssignedJson);
+        }
+        else if (!string.IsNullOrEmpty(Role) && !IsRoleRevealVisible && !IsGameOver)
+        {
+            ShowRoleRevealOverlay(Role, new List<string>());
+        }
+
         if (_gameClient.LastRoomStateJson != null)
         {
             ParseRoomStateJson(_gameClient.LastRoomStateJson);
@@ -221,7 +318,8 @@ public partial class GameViewModel : ObservableObject, IDisposable
             {
                 using var doc = JsonDocument.Parse(_gameClient.LastPhaseJson);
                 var newPhase = doc.RootElement.GetProperty("phase").GetString() ?? "Unknown";
-                UpdatePhaseState(newPhase);
+                var round = doc.RootElement.TryGetProperty("round", out var rProp) ? rProp.GetInt32() : 1;
+                UpdatePhaseState(newPhase, round);
                 if (doc.RootElement.TryGetProperty("durationSeconds", out var durProp))
                 {
                     StartTimer(durProp.GetInt32());
@@ -240,6 +338,7 @@ public partial class GameViewModel : ObservableObject, IDisposable
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("players", out var playersProp))
             {
+                ClearSelection();
                 Players.Clear();
                 AlivePlayers.Clear();
                 DeadPlayers.Clear();
@@ -368,9 +467,11 @@ public partial class GameViewModel : ObservableObject, IDisposable
         CheckUnreadChat();
     }
 
-    private void UpdatePhaseState(string newPhase)
+    private void UpdatePhaseState(string newPhase, int round = 1)
     {
         Phase = newPhase;
+        CurrentRound = round;
+        ClearSelection();
 
         if (IsGameOver)
         {
@@ -398,6 +499,7 @@ public partial class GameViewModel : ObservableObject, IDisposable
 
         if (newPhase == "NIGHT")
         {
+            DisplayPhaseName = $"NIGHT {round}";
             PhaseIcon = "🌙";
             PhaseBadgeColor = Color.FromArgb("#7E57C2");
             if (IsLocalPlayerAlive)
@@ -407,73 +509,76 @@ public partial class GameViewModel : ObservableObject, IDisposable
                     case "MAFIA":
                         ActionButtonText = "Kill Target";
                         IsActionEnabled = true;
-                        PhaseDescription = "🌙 NIGHT: Select a victim from Alive Citizens & tap 'Kill Target'.";
-                        AddSystemMessage("🌙 Night has fallen. Select a victim from Alive Citizens and click 'Kill Target'!", isPrivate: true);
+                        PhaseDescription = $"🌙 NIGHT {round}: Select a victim from Alive Citizens & tap 'Kill Target'.";
+                        AddSystemMessage($"🌙 NIGHT {round} has fallen. Select a victim from Alive Citizens and click 'Kill Target'!", isPrivate: true);
                         break;
                     case "DOCTOR":
                         ActionButtonText = "Protect Target";
                         IsActionEnabled = true;
-                        PhaseDescription = "🌙 NIGHT: Select a citizen to protect from attacks tonight.";
-                        AddSystemMessage("🌙 Night has fallen. Select a player to protect and click 'Protect Target'!", isPrivate: true);
+                        PhaseDescription = $"🌙 NIGHT {round}: Select a citizen to protect from attacks tonight.";
+                        AddSystemMessage($"🌙 NIGHT {round} has fallen. Select a player to protect and click 'Protect Target'!", isPrivate: true);
                         break;
                     case "DETECTIVE":
                         ActionButtonText = "Investigate Target";
                         IsActionEnabled = true;
-                        PhaseDescription = "🌙 NIGHT: Select a suspect to reveal their true role.";
-                        AddSystemMessage("🌙 Night has fallen. Select a suspect to investigate and click 'Investigate Target'!", isPrivate: true);
+                        PhaseDescription = $"🌙 NIGHT {round}: Select a suspect to reveal their true role.";
+                        AddSystemMessage($"🌙 NIGHT {round} has fallen. Select a suspect to investigate and click 'Investigate Target'!", isPrivate: true);
                         break;
                     default:
                         ActionButtonText = "Sleep (No Action)";
                         IsActionEnabled = false;
-                        PhaseDescription = "🌙 NIGHT: You are an innocent citizen. Sleep peacefully tonight.";
-                        AddSystemMessage("🌙 Night has fallen. You are an innocent citizen. Sleep soundly through the night.", isPrivate: true);
+                        PhaseDescription = $"🌙 NIGHT {round}: You are an innocent citizen. Sleep peacefully tonight.";
+                        AddSystemMessage($"🌙 NIGHT {round} has fallen. You are an innocent citizen. Sleep soundly through the night.", isPrivate: true);
                         break;
                 }
             }
             else
             {
-                PhaseDescription = "🌙 NIGHT: Spectating as night actions unfold.";
+                PhaseDescription = $"🌙 NIGHT {round}: Spectating as night actions unfold.";
             }
             ShowAliveRoster();
             ShowPlayersTab();
         }
         else if (newPhase == "DAY")
         {
+            DisplayPhaseName = $"DAY {round}";
             PhaseIcon = "☀️";
             PhaseBadgeColor = Color.FromArgb("#F59E0B");
             if (IsLocalPlayerAlive)
             {
                 ActionButtonText = "Discussion Phase";
                 IsActionEnabled = false;
-                PhaseDescription = "☀️ DAY: Town discussion is open! Strategize and deduce the Mafia.";
+                PhaseDescription = $"☀️ DAY {round}: Town discussion is open! Strategize and deduce the Mafia.";
             }
             else
             {
-                PhaseDescription = "☀️ DAY: Spectating town discussion.";
+                PhaseDescription = $"☀️ DAY {round}: Spectating town discussion.";
             }
-            AddSystemMessage("☀️ The sun has risen. Discussion is open! Chat with the town to uncover the Mafia.", isPrivate: false);
+            AddSystemMessage($"☀️ DAY {round}: The sun has risen. Discussion is open! Chat with the town to uncover the Mafia.", isPrivate: false);
             ShowChatTab();
         }
         else if (newPhase == "VOTING")
         {
+            DisplayPhaseName = $"VOTING {round}";
             PhaseIcon = "⚖️";
             PhaseBadgeColor = Color.FromArgb("#EF4444");
             if (IsLocalPlayerAlive)
             {
                 ActionButtonText = "Vote to Eliminate";
                 IsActionEnabled = true;
-                PhaseDescription = "⚖️ VOTING: Tap a suspect from Alive Citizens and tap 'Vote to Eliminate'.";
+                PhaseDescription = $"⚖️ VOTING {round}: Tap a suspect from Alive Citizens and tap 'Vote to Eliminate'.";
             }
             else
             {
-                PhaseDescription = "⚖️ VOTING: Citizens are voting on a suspect.";
+                PhaseDescription = $"⚖️ VOTING {round}: Citizens are voting on a suspect.";
             }
-            AddSystemMessage("⚖️ Voting Phase has begun! Select a suspect from Alive Citizens and click 'Vote to Eliminate'.", isPrivate: false);
+            AddSystemMessage($"⚖️ VOTING {round} has begun! Select a suspect from Alive Citizens and click 'Vote to Eliminate'.", isPrivate: false);
             ShowAliveRoster();
             ShowPlayersTab();
         }
         else
         {
+            DisplayPhaseName = newPhase;
             PhaseIcon = "⏳";
             PhaseBadgeColor = Color.FromArgb("#71717A");
             if (IsLocalPlayerAlive)
@@ -524,10 +629,7 @@ public partial class GameViewModel : ObservableObject, IDisposable
             }
         }
 
-        if (SelectedPlayer?.Id == playerId)
-        {
-            SelectedPlayer = null;
-        }
+        ClearSelection();
 
         // Check if the local player died
         bool isMe = (playerId == LocalPlayerId) || 
@@ -556,14 +658,19 @@ public partial class GameViewModel : ObservableObject, IDisposable
                 using var doc = JsonDocument.Parse(json);
                 var type = doc.RootElement.GetProperty("type").GetString();
 
-                if (type == "ROOM_STATE")
+                if (type == "ROLE_ASSIGNED")
+                {
+                    ParseRoleAssignedJson(json);
+                }
+                else if (type == "ROOM_STATE")
                 {
                     ParseRoomStateJson(json);
                 }
                 else if (type == "PHASE_CHANGED")
                 {
                     var newPhase = doc.RootElement.GetProperty("phase").GetString() ?? "Unknown";
-                    UpdatePhaseState(newPhase);
+                    var round = doc.RootElement.TryGetProperty("round", out var rProp) ? rProp.GetInt32() : 1;
+                    UpdatePhaseState(newPhase, round);
 
                     if (doc.RootElement.TryGetProperty("durationSeconds", out var durProp))
                     {
@@ -751,19 +858,197 @@ public partial class GameViewModel : ObservableObject, IDisposable
 
             if (!string.IsNullOrEmpty(action))
             {
+                var targetName = SelectedPlayer.Username;
+                var targetId = SelectedPlayer.Id;
+                ClearSelection();
+                IsActionEnabled = false;
+                ActionButtonText = "Action Locked In ✓";
+
                 await _gameClient.SendMessageAsync(new { 
                     type = "NIGHT_ACTION", 
-                    targetPlayerId = SelectedPlayer.Id,
+                    targetPlayerId = targetId,
                     message = action 
                 });
-                AddSystemMessage($"🎯 You targeted {SelectedPlayer.Username} for your night action ({action}).", isPrivate: true);
+                AddSystemMessage($"🎯 You targeted {targetName} for your night action ({action}).", isPrivate: true);
             }
         }
         else if (Phase == "VOTING")
         {
-            await _gameClient.SendMessageAsync(new { type = "CAST_VOTE", targetPlayerId = SelectedPlayer.Id });
-            AddSystemMessage($"🗳️ You cast your vote for {SelectedPlayer.Username}.", isPrivate: true);
+            var targetName = SelectedPlayer.Username;
+            var targetId = SelectedPlayer.Id;
+            ClearSelection();
+            IsActionEnabled = false;
+            ActionButtonText = "Vote Cast ✓";
+
+            await _gameClient.SendMessageAsync(new { type = "CAST_VOTE", targetPlayerId = targetId });
+            AddSystemMessage($"🗳️ You cast your vote for {targetName}.", isPrivate: true);
         }
+    }
+
+    private void ParseRoleAssignedJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var assignedRole = doc.RootElement.GetProperty("role").GetString() ?? "CITIZEN";
+            Role = assignedRole;
+
+            List<string> partners = new();
+            if (doc.RootElement.TryGetProperty("mafiaPartners", out var mpProp) && mpProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in mpProp.EnumerateArray())
+                {
+                    var pName = item.GetString();
+                    if (!string.IsNullOrEmpty(pName)) partners.Add(pName);
+                }
+            }
+
+            ShowRoleRevealOverlay(assignedRole, partners);
+        }
+        catch { }
+    }
+
+    private void ShowRoleRevealOverlay(string role, List<string> partners, int durationSeconds = 8)
+    {
+        role = role.ToUpper();
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            RoleRevealIcon = role switch
+            {
+                "MAFIA" => "🔫",
+                "DOCTOR" => "💉",
+                "DETECTIVE" => "🕵️",
+                _ => "👤"
+            };
+            RoleRevealTitle = role;
+
+            if (role == "MAFIA")
+            {
+                RoleRevealFactionText = "FACTION: MAFIA";
+                RoleRevealFactionColor = Color.FromArgb("#EF4444");
+                RoleRevealFactionBgColor = Color.FromArgb("#3B1B1E");
+                RoleRevealObjective = "Outnumber or eliminate all town members to take control of the city.";
+                RoleRevealAbilities = "• Coordinate with fellow mafia and vote to execute a victim every night.\n• Blend in during the day to avoid suspicion.";
+
+                var otherPartners = partners.Where(p => !p.Equals(Username, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (otherPartners.Any())
+                {
+                    HasMafiaPartners = true;
+                    MafiaPartnersText = $"Mafia Teammates: {string.Join(", ", otherPartners)}";
+                }
+                else
+                {
+                    HasMafiaPartners = false;
+                    MafiaPartnersText = string.Empty;
+                }
+            }
+            else
+            {
+                RoleRevealFactionText = "FACTION: TOWN (CITIZENS)";
+                RoleRevealFactionColor = Color.FromArgb("#10B981");
+                RoleRevealFactionBgColor = Color.FromArgb("#132E27");
+                RoleRevealObjective = "Identify, vote out, and eliminate every member of the Mafia.";
+                HasMafiaPartners = false;
+                MafiaPartnersText = string.Empty;
+
+                if (role == "DOCTOR")
+                {
+                    RoleRevealAbilities = "• Choose one citizen each night to protect from lethal Mafia attacks.\n• You may protect yourself if you fear you are being targeted.";
+                }
+                else if (role == "DETECTIVE")
+                {
+                    RoleRevealAbilities = "• Investigate one suspect each night to determine if they are suspicious.\n• Guide the town during the day with your intelligence.";
+                }
+                else
+                {
+                    RoleRevealAbilities = "• Listen closely during the day and look for contradictory statements.\n• Cast your vote during Voting phase to eliminate suspected Mafia.";
+                }
+            }
+
+            IsRoleRevealVisible = true;
+        });
+
+        StartRoleRevealCountdown(durationSeconds);
+    }
+
+    private void StartRoleRevealCountdown(int seconds)
+    {
+        try
+        {
+            _roleRevealCts?.Cancel();
+            _roleRevealCts?.Dispose();
+        }
+        catch (ObjectDisposedException) { }
+
+        _roleRevealCts = new CancellationTokenSource();
+        var cts = _roleRevealCts;
+        var token = cts.Token;
+
+        Task.Run(async () =>
+        {
+            for (int sec = seconds; sec >= 0; sec--)
+            {
+                if (token.IsCancellationRequested) break;
+                var count = sec;
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    RoleRevealCountdownText = count > 0 
+                        ? $"Role Card ({count}s)" 
+                        : "Ready!";
+                });
+                if (count == 0) break;
+                try
+                {
+                    await Task.Delay(1000, token);
+                }
+                catch (OperationCanceledException) { break; }
+            }
+
+            if (!token.IsCancellationRequested)
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    IsRoleRevealVisible = false;
+                });
+            }
+        }, token);
+    }
+
+    [RelayCommand]
+    private void ShowRoleDetails()
+    {
+        if (string.IsNullOrEmpty(Role)) return;
+
+        List<string> partners = new();
+        if (_gameClient.LastRoleAssignedJson != null)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(_gameClient.LastRoleAssignedJson);
+                if (doc.RootElement.TryGetProperty("mafiaPartners", out var mpProp) && mpProp.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in mpProp.EnumerateArray())
+                    {
+                        var pName = item.GetString();
+                        if (!string.IsNullOrEmpty(pName)) partners.Add(pName);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        ShowRoleRevealOverlay(Role, partners, durationSeconds: 8);
+    }
+
+    [RelayCommand]
+    private void DismissRoleReveal()
+    {
+        try
+        {
+            _roleRevealCts?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+        IsRoleRevealVisible = false;
     }
 
     [RelayCommand]
@@ -825,7 +1110,12 @@ public partial class GameViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SelectPlayerCard(GamePlayer? player)
     {
-        if (player == null || !player.IsAlive) return;
+        if (player == null || !player.IsAlive || !IsActionEnabled || !IsLocalPlayerAlive) return;
+
+        foreach (var p in AlivePlayers)
+        {
+            p.IsSelected = (p.Id == player.Id);
+        }
         SelectedPlayer = player;
     }
 
@@ -857,6 +1147,21 @@ public partial class GameViewModel : ObservableObject, IDisposable
             }
             catch (ObjectDisposedException) { }
             _timerCts = null;
+        }
+
+        try
+        {
+            _roleRevealCts?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+        finally
+        {
+            try
+            {
+                _roleRevealCts?.Dispose();
+            }
+            catch (ObjectDisposedException) { }
+            _roleRevealCts = null;
         }
 
         _gameClient.OnMessageReceived -= OnMessageReceived;

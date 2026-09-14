@@ -19,6 +19,7 @@ public class GameClientService
 
     public string? LastRoomStateJson { get; private set; }
     public string? LastPhaseJson { get; private set; }
+    public string? LastRoleAssignedJson { get; private set; }
 
     public event Action<string>? OnMessageReceived;
     public event Action? OnDisconnected;
@@ -63,6 +64,10 @@ public class GameClientService
                 {
                     LastPhaseJson = line;
                 }
+                else if (line.Contains("\"type\":\"ROLE_ASSIGNED\""))
+                {
+                    LastRoleAssignedJson = line;
+                }
 
                 // Fire event on main thread or just let UI handle dispatching
                 OnMessageReceived?.Invoke(line);
@@ -98,6 +103,10 @@ public class GameClientService
     {
         if (!_isConnected) return;
         _isConnected = false;
+
+        LastRoomStateJson = null;
+        LastPhaseJson = null;
+        LastRoleAssignedJson = null;
 
         try { _reader?.Dispose(); } catch {}
         try { _writer?.Dispose(); } catch {}

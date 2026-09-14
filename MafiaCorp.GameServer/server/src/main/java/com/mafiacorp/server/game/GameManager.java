@@ -29,6 +29,8 @@ public class GameManager {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private ScheduledFuture<?> phaseTask;
 
+    private int roundNumber = 1;
+
     // Night Actions
     private Integer mafiaTargetId = null;
     private Integer doctorTargetId = null;
@@ -120,6 +122,7 @@ public class GameManager {
         }
 
         currentState = GameState.STARTING;
+        roundNumber = 1;
         gameStartTime = Instant.now();
         broadcastAll(new GameStarting());
 
@@ -143,16 +146,21 @@ public class GameManager {
                 .map(Player::getId)
                 .collect(Collectors.toList());
 
+        List<String> mafiaPartners = playerList.stream()
+                .filter(p -> p.getRole() == Role.MAFIA)
+                .map(Player::getUsername)
+                .collect(Collectors.toList());
+
         for (Player p : playerList) {
             if (p.getRole() == Role.MAFIA) {
-                sendMessageTo(p.getId(), new RoleAssigned(p.getRole().name(), mafiaIds));
+                sendMessageTo(p.getId(), new RoleAssigned(p.getRole().name(), mafiaIds, mafiaPartners));
             } else {
-                sendMessageTo(p.getId(), new RoleAssigned(p.getRole().name(), null));
+                sendMessageTo(p.getId(), new RoleAssigned(p.getRole().name(), null, null));
             }
         }
 
-        // Give clients 3 seconds to complete navigation and initialize UI before Night falls
-        scheduler.schedule(this::transitionToNight, 3, TimeUnit.SECONDS);
+        // Give clients 9 seconds for the full-screen role reveal overlay (8s countdown) before Night 1 begins
+        scheduler.schedule(this::transitionToNight, 9, TimeUnit.SECONDS);
     }
 
     private void transitionToNight() {
@@ -161,7 +169,7 @@ public class GameManager {
         doctorTargetId = null;
         detectiveActed = false;
 
-        broadcastAll(new PhaseChanged(currentState.name(), 30));
+        broadcastAll(new PhaseChanged(currentState.name(), 30, roundNumber));
 
         schedulePhaseTransition(this::resolveNight, 30);
     }
@@ -197,16 +205,23 @@ public class GameManager {
         if (currentState != GameState.NIGHT) return;
         currentState = GameState.NIGHT_RESOLUTION;
         
+        Integer victimId = null;
+        String victimName = null;
+        String victimRole = null;
+        boolean doctorSaved = false;
+
         if (mafiaTargetId != null) {
             if (doctorTargetId != null && doctorTargetId.equals(mafiaTargetId)) {
                 // Doctor successfully protected the target!
-                broadcastAll(new DoctorSaved(mafiaTargetId));
+                doctorSaved = true;
+                victimId = mafiaTargetId;
             } else {
                 Player victim = players.get(mafiaTargetId);
                 if (victim != null && victim.isAlive()) {
                     victim.setAlive(false);
-                    String victimRole = victim.getRole() != null ? victim.getRole().name() : "CITIZEN";
-                    broadcastAll(new PlayerDied(mafiaTargetId, victim.getUsername(), victimRole));
+                    victimId = mafiaTargetId;
+                    victimName = victim.getUsername();
+                    victimRole = victim.getRole() != null ? victim.getRole().name() : "CITIZEN";
                     for (Player p : players.values()) {
                         if (p.isAlive() && p.getRole() == Role.MAFIA) {
                             p.incrementKills();
@@ -216,14 +231,28 @@ public class GameManager {
             }
         }
 
-        if (!checkWinCondition()) {
-            transitionToDay();
+        if (checkWinCondition()) {
+            if (victimId != null && victimName != null) {
+                broadcastAll(new PlayerDied(victimId, victimName, victimRole));
+            }
+            return;
         }
+
+        transitionToDay(victimId, victimName, victimRole, doctorSaved);
     }
 
-    private void transitionToDay() {
+    private void transitionToDay(Integer victimId, String victimName, String victimRole, boolean doctorSaved) {
         currentState = GameState.DAY;
-        broadcastAll(new PhaseChanged(currentState.name(), 45));
+        // 1. Broadcast Day PhaseChanged FIRST so dawn announcement appears before casualty report
+        broadcastAll(new PhaseChanged(currentState.name(), 45, roundNumber));
+
+        // 2. Broadcast night casualties or doctor save SECOND
+        if (doctorSaved && victimId != null) {
+            broadcastAll(new DoctorSaved(victimId));
+        } else if (victimId != null && victimName != null) {
+            broadcastAll(new PlayerDied(victimId, victimName, victimRole));
+        }
+
         schedulePhaseTransition(this::transitionToVoting, 45);
     }
 
@@ -232,7 +261,7 @@ public class GameManager {
         currentState = GameState.VOTING;
         votes.clear();
         broadcastAll(new VotingStarted());
-        broadcastAll(new PhaseChanged(currentState.name(), 30));
+        broadcastAll(new PhaseChanged(currentState.name(), 30, roundNumber));
         schedulePhaseTransition(this::resolveVoting, 30);
     }
 
@@ -301,18 +330,24 @@ public class GameManager {
                 eliminated.setAlive(false);
                 eliminatedName = eliminated.getUsername();
                 eliminatedRole = eliminated.getRole() != null ? eliminated.getRole().name() : "CITIZEN";
-                broadcastAll(new PlayerEliminated(eliminatedId, eliminatedName, eliminatedRole));
             }
         } else {
             // No one eliminated on tie
             System.out.println("Voting tied or no votes, no one eliminated.");
         }
 
-        // Broadcast detailed voting results to all players
+        // 1. Broadcast detailed voting results FIRST
         broadcastAll(new VotingResults(candidateVotes, eliminatedName, eliminatedRole, tie));
 
+        // 2. Broadcast elimination verdict SECOND (if someone was eliminated)
+        if (eliminatedId != null && !tie && eliminatedName != null) {
+            broadcastAll(new PlayerEliminated(eliminatedId, eliminatedName, eliminatedRole));
+        }
+
         if (!checkWinCondition()) {
-            transitionToNight();
+            roundNumber++;
+            // 5-second pause before next night so players have ample time to read the voting results
+            scheduler.schedule(this::transitionToNight, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -388,6 +423,7 @@ public class GameManager {
 
     private synchronized void resetMatch() {
         currentState = GameState.WAITING_FOR_PLAYERS;
+        roundNumber = 1;
         for (Player p : players.values()) {
             p.setRole(Role.UNASSIGNED);
             p.setAlive(true);

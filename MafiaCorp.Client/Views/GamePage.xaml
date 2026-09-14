@@ -12,11 +12,15 @@
         <Border Grid.Row="0" Grid.ColumnSpan="2" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="{StaticResource BorderSubtle}" StrokeShape="RoundRectangle 10" Padding="10,6">
             <Grid ColumnDefinitions="Auto, Auto, *, Auto" ColumnSpacing="10" VerticalOptions="Center">
                 
-                <!-- Role Chip -->
+                <!-- Role Chip (Tap to view role details anytime) -->
                 <Border Grid.Column="0" BackgroundColor="{Binding RoleColor}" StrokeShape="RoundRectangle 6" Stroke="Transparent" Padding="8,4" VerticalOptions="Center">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ShowRoleDetailsCommand}" />
+                    </Border.GestureRecognizers>
                     <HorizontalStackLayout Spacing="5" VerticalOptions="Center">
                         <Label Text="{Binding RoleIcon}" FontSize="13" VerticalOptions="Center" />
                         <Label Text="{Binding Role}" FontSize="12" FontAttributes="Bold" TextColor="White" TextTransform="Uppercase" VerticalOptions="Center" />
+                        <Label Text="ℹ️" FontSize="9" TextColor="White" Opacity="0.8" VerticalOptions="Center" Margin="2,0,0,0" />
                     </HorizontalStackLayout>
                 </Border>
 
@@ -24,7 +28,7 @@
                 <Border Grid.Column="1" BackgroundColor="{Binding PhaseBadgeColor}" StrokeShape="RoundRectangle 6" Stroke="Transparent" Padding="8,4" HorizontalOptions="Start" VerticalOptions="Center">
                     <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
                         <Label Text="{Binding PhaseIcon}" FontSize="13" VerticalOptions="Center" />
-                        <Label Text="{Binding Phase}" FontSize="12" FontAttributes="Bold" TextColor="White" TextTransform="Uppercase" VerticalOptions="Center" />
+                        <Label Text="{Binding DisplayPhaseName}" FontSize="12" FontAttributes="Bold" TextColor="White" TextTransform="Uppercase" VerticalOptions="Center" />
                         <Label Text="•" FontSize="11" TextColor="White" Opacity="0.7" VerticalOptions="Center" />
                         <Label Text="{Binding TimerText}" FontSize="13" FontAttributes="Bold" TextColor="#FFE082" VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -69,16 +73,19 @@
                 <!-- Alive Players Collection -->
                 <CollectionView Grid.Row="1" 
                                 ItemsSource="{Binding AlivePlayers}" 
-                                SelectionMode="Single" 
-                                SelectedItem="{Binding SelectedPlayer}"
+                                SelectionMode="None" 
                                 IsVisible="{Binding IsShowingAliveRoster}">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border BackgroundColor="{StaticResource SurfaceCard}" 
-                                    Stroke="{StaticResource BorderSubtle}" 
+                            <Border BackgroundColor="{Binding CardBackground}" 
+                                    Stroke="{Binding CardStroke}" 
+                                    StrokeThickness="{Binding CardStrokeThickness}" 
                                     StrokeShape="RoundRectangle 8" 
                                     Padding="8,6" 
                                     Margin="0,0,0,4">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:GameViewModel}}, Path=SelectPlayerCardCommand}" CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
                                 <Grid ColumnDefinitions="Auto, *, Auto" VerticalOptions="Center">
                                     <!-- Avatar -->
                                     <Border Grid.Column="0" WidthRequest="28" HeightRequest="28" StrokeShape="RoundRectangle 14" BackgroundColor="{StaticResource SurfaceVariant}" Stroke="Transparent" VerticalOptions="Center">
@@ -234,6 +241,134 @@
                             <Button Text="Headquarters" Command="{Binding ReturnToMainMenuCommand}" BackgroundColor="{StaticResource Primary}" TextColor="White" HeightRequest="40" CornerRadius="8" FontAttributes="Bold" FontSize="13" Padding="16,0" />
                             <Button Text="Review Chat" Command="{Binding DismissGameOverCommand}" BackgroundColor="Transparent" TextColor="{StaticResource OnSurfaceMuted}" HeightRequest="40" FontSize="12" />
                         </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+        </Grid>
+
+        <!-- Discord MafiaBot Style 5-Second Full-Screen Role Reveal Overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2" 
+              BackgroundColor="#F807070B" 
+              IsVisible="{Binding IsRoleRevealVisible}" 
+              ZIndex="100" 
+              Padding="10,6">
+            <Border BackgroundColor="#13131D" 
+                    Stroke="{Binding RoleRevealFactionColor}" 
+                    StrokeThickness="2" 
+                    StrokeShape="RoundRectangle 14" 
+                    Padding="18,10" 
+                    MaximumWidthRequest="520" 
+                    HorizontalOptions="Center" 
+                    VerticalOptions="Center">
+                <ScrollView Orientation="Vertical">
+                    <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                        
+                        <!-- Faction Pill -->
+                        <Border BackgroundColor="{Binding RoleRevealFactionBgColor}" 
+                                Stroke="{Binding RoleRevealFactionColor}" 
+                                StrokeThickness="1" 
+                                StrokeShape="RoundRectangle 12" 
+                                Padding="12,4" 
+                                HorizontalOptions="Center">
+                            <Label Text="{Binding RoleRevealFactionText}" 
+                                   FontSize="11" 
+                                   FontAttributes="Bold" 
+                                   TextColor="{Binding RoleRevealFactionColor}" 
+                                   CharacterSpacing="1" />
+                        </Border>
+
+                        <!-- Role Icon & Name -->
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="{Binding RoleRevealIcon}" 
+                                   FontSize="38" 
+                                   HorizontalOptions="Center" />
+                            <Label Text="{Binding RoleRevealTitle}" 
+                                   FontSize="24" 
+                                   FontAttributes="Bold" 
+                                   TextColor="{Binding RoleRevealFactionColor}" 
+                                   HorizontalOptions="Center" 
+                                   CharacterSpacing="2" />
+                        </VerticalStackLayout>
+
+                        <!-- Role Objective Box -->
+                        <Border BackgroundColor="#1B1B27" 
+                                Stroke="#2E2E3E" 
+                                StrokeThickness="1" 
+                                StrokeShape="RoundRectangle 8" 
+                                Padding="12,8">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="PRIMARY OBJECTIVE" 
+                                       FontSize="10" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#9CA3AF" 
+                                       CharacterSpacing="1" />
+                                <Label Text="{Binding RoleRevealObjective}" 
+                                       FontSize="12" 
+                                       TextColor="#E5E7EB" 
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Role Abilities Box -->
+                        <Border BackgroundColor="#1B1B27" 
+                                Stroke="#2E2E3E" 
+                                StrokeThickness="1" 
+                                StrokeShape="RoundRectangle 8" 
+                                Padding="12,8">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="ABILITIES &amp; ACTIONS" 
+                                       FontSize="10" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#9CA3AF" 
+                                       CharacterSpacing="1" />
+                                <Label Text="{Binding RoleRevealAbilities}" 
+                                       FontSize="11" 
+                                       TextColor="#D1D5DB" 
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Mafia Partners (Only shown if local player is Mafia and has partners) -->
+                        <Border BackgroundColor="#2D1214" 
+                                Stroke="#EF4444" 
+                                StrokeThickness="1" 
+                                StrokeShape="RoundRectangle 8" 
+                                Padding="12,6" 
+                                IsVisible="{Binding HasMafiaPartners}">
+                            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                <Label Text="👥" FontSize="12" VerticalOptions="Center" />
+                                <Label Text="{Binding MafiaPartnersText}" 
+                                       FontSize="12" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#F87171" 
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- 8-Second Countdown & Dismiss Button -->
+                        <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                            <Border BackgroundColor="#222230" 
+                                    StrokeShape="RoundRectangle 8" 
+                                    Padding="14,6" 
+                                    HorizontalOptions="Center">
+                                <Label Text="{Binding RoleRevealCountdownText}" 
+                                       FontSize="13" 
+                                       FontAttributes="Bold" 
+                                       TextColor="#FFE082" 
+                                       HorizontalOptions="Center" />
+                            </Border>
+
+                            <Button Text="Dismiss ✕" 
+                                    Command="{Binding DismissRoleRevealCommand}"
+                                    BackgroundColor="#374151"
+                                    TextColor="#F3F4F6"
+                                    FontSize="12"
+                                    FontAttributes="Bold"
+                                    CornerRadius="8"
+                                    HeightRequest="34"
+                                    Padding="12,0" />
+                        </HorizontalStackLayout>
+
                     </VerticalStackLayout>
                 </ScrollView>
             </Border>

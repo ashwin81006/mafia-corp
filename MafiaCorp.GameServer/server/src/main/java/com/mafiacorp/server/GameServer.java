@@ -1,6 +1,5 @@
 package com.mafiacorp.server;
 
-import com.mafiacorp.server.game.GameManager;
 import com.mafiacorp.server.networking.ConnectionManager;
 
 public class GameServer {
