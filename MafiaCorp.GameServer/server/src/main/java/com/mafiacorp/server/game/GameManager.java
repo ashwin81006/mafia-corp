@@ -231,13 +231,6 @@ public class GameManager {
             }
         }
 
-        if (checkWinCondition()) {
-            if (victimId != null && victimName != null) {
-                broadcastAll(new PlayerDied(victimId, victimName, victimRole));
-            }
-            return;
-        }
-
         transitionToDay(victimId, victimName, victimRole, doctorSaved);
     }
 
@@ -251,6 +244,13 @@ public class GameManager {
             broadcastAll(new DoctorSaved(victimId));
         } else if (victimId != null && victimName != null) {
             broadcastAll(new PlayerDied(victimId, victimName, victimRole));
+        }
+
+        String nightWinner = getWinningFaction();
+        if (nightWinner != null) {
+            // Schedule endGame after 7 seconds so players can comfortably read the dawn casualties in chat
+            scheduler.schedule(() -> endGame(nightWinner), 7, TimeUnit.SECONDS);
+            return;
         }
 
         schedulePhaseTransition(this::transitionToVoting, 45);
@@ -344,25 +344,27 @@ public class GameManager {
             broadcastAll(new PlayerEliminated(eliminatedId, eliminatedName, eliminatedRole));
         }
 
-        if (!checkWinCondition()) {
+        String winner = getWinningFaction();
+        if (winner != null) {
+            // Give 7 seconds so players have ample time to read the voting results and verdict in chat before Game Over triggers
+            scheduler.schedule(() -> endGame(winner), 7, TimeUnit.SECONDS);
+        } else {
             roundNumber++;
             // 5-second pause before next night so players have ample time to read the voting results
             scheduler.schedule(this::transitionToNight, 5, TimeUnit.SECONDS);
         }
     }
 
-    private boolean checkWinCondition() {
+    private String getWinningFaction() {
         long aliveMafia = players.values().stream().filter(p -> p.isAlive() && p.getRole() == Role.MAFIA).count();
         long aliveNonMafia = players.values().stream().filter(p -> p.isAlive() && p.getRole() != Role.MAFIA).count();
 
         if (aliveMafia == 0) {
-            endGame("CITIZENS");
-            return true;
+            return "CITIZENS";
         } else if (aliveMafia >= aliveNonMafia) {
-            endGame("MAFIA");
-            return true;
+            return "MAFIA";
         }
-        return false;
+        return null;
     }
 
     private void endGame(String winner) {

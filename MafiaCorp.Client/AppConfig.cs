@@ -13,5 +13,5 @@ public static class AppConfig
     /// <summary>
     /// Base URL for the Web API. For Cloudflare Tunnel, set to "https://xxxx.trycloudflare.com".
     /// </summary>
-    public static string ApiBaseUrl { get; set; } = "https://tips-displays-gateway-contrary.trycloudflare.com";
+    public static string ApiBaseUrl { get; set; } = "https://veterans-sensors-visibility-cnet.trycloudflare.com";
 }

@@ -794,12 +794,10 @@ public partial class GameViewModel : ObservableObject, IDisposable
                         _timerCts = null;
                     }
                     catch (ObjectDisposedException) { }
-                    TimerText = "0s";
                     IsActionEnabled = false;
                     ActionButtonText = "Match Finished";
                     IsChatEnabled = false;
 
-                    IsGameOver = true;
                     bool isLocalMafia = Role.Equals("MAFIA", StringComparison.OrdinalIgnoreCase);
                     bool mafiaWon = winner.Equals("MAFIA", StringComparison.OrdinalIgnoreCase);
                     bool didIWin = (isLocalMafia && mafiaWon) || (!isLocalMafia && !mafiaWon);
@@ -813,6 +811,28 @@ public partial class GameViewModel : ObservableObject, IDisposable
                     GameOverStatusText = IsLocalPlayerAlive ? "Status: Survived" : "Status: Eliminated";
 
                     AddSystemMessage($"🏆 GAME OVER! Winners: {winner}. {(didIWin ? "You Won!" : "You Lost!")}", isPrivate: false);
+
+                    // Allow players to review the final chat announcements before presenting the summary card
+                    _ = Task.Run(async () =>
+                    {
+                        for (int s = 5; s > 0; s--)
+                        {
+                            var countdownText = $"{s}s";
+                            MainThread.BeginInvokeOnMainThread(() =>
+                            {
+                                TimerText = countdownText;
+                                PhaseDescription = $"Match concluded. Showing results in {countdownText}...";
+                            });
+                            await Task.Delay(1000);
+                        }
+
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            TimerText = "0s";
+                            PhaseDescription = "Match Finished. Review final results.";
+                            IsGameOver = true;
+                        });
+                    });
                 }
             }
             catch (Exception ex)
