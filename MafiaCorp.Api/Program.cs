@@ -42,9 +42,29 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Setup Database
+// Setup Database Connection String (checks all common env vars on Render/Heroku/Docker)
+var rawConnectionString = 
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration["DATABASE_URL"]
+    ?? builder.Configuration["DefaultConnection"]
+    ?? builder.Configuration["ConnectionStrings__DefaultConnection"]
+    ?? builder.Configuration["POSTGRES_URL"]
+    ?? builder.Configuration["POSTGRESQL_URL"];
+
+var resolvedConnectionString = Program.BuildNpgsqlConnectionString(rawConnectionString);
+
+try
+{
+    var csb = new Npgsql.NpgsqlConnectionStringBuilder(resolvedConnectionString);
+    Console.WriteLine($"[Database] Target Host={csb.Host};Port={csb.Port};Database={csb.Database};Username={csb.Username};SSL={csb.SslMode}");
+}
+catch
+{
+    Console.WriteLine("[Database] Configured with custom connection string.");
+}
+
 builder.Services.AddDbContext<MafiaDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(resolvedConnectionString));
 
 // Setup Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] 
@@ -76,18 +96,39 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+// Show developer exception page in production to avoid silent empty 500 errors
+app.UseDeveloperExceptionPage();
+
 // Automatically apply EF Core database migrations on startup if connected
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<MafiaDbContext>();
     try
     {
-        var db = scope.ServiceProvider.GetRequiredService<MafiaDbContext>();
-        db.Database.Migrate();
-        Console.WriteLine("[Database] Migration applied successfully.");
+        Console.WriteLine("[Database] Checking connection...");
+        if (db.Database.CanConnect())
+        {
+            Console.WriteLine("[Database] Successfully connected! Applying migrations...");
+            try
+            {
+                db.Database.Migrate();
+                Console.WriteLine("[Database] Migrations applied successfully.");
+            }
+            catch (Exception migEx)
+            {
+                Console.WriteLine($"[Database Migration Warning] Migrate failed: {migEx.Message}. Attempting EnsureCreated()...");
+                db.Database.EnsureCreated();
+                Console.WriteLine("[Database] EnsureCreated() completed successfully.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("[Database Warning] Database.CanConnect() returned false. Database may be unreachable or offline.");
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[Database Migration Notice] {ex.Message}");
+        Console.WriteLine($"[Database Error] Initialization failed: {ex.Message}");
     }
 }
 
@@ -101,8 +142,113 @@ app.UseSwaggerUI(c =>
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Database Health & Diagnostic Endpoint
+app.MapGet("/api/health/db", async (MafiaDbContext db) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync();
+        string? host = "Unknown";
+        string? database = "Unknown";
+        string? ssl = "Unknown";
+        try
+        {
+            var csb = new Npgsql.NpgsqlConnectionStringBuilder(db.Database.GetConnectionString());
+            host = csb.Host;
+            database = csb.Database;
+            ssl = csb.SslMode.ToString();
+        }
+        catch { }
+
+        int userCount = -1;
+        if (canConnect)
+        {
+            userCount = await db.Users.CountAsync();
+        }
+
+        return Results.Ok(new
+        {
+            status = canConnect ? "connected" : "cannot_connect",
+            canConnect,
+            host,
+            database,
+            ssl,
+            userCount
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new
+        {
+            status = "error",
+            error = ex.Message,
+            inner = ex.InnerException?.Message,
+            stack = ex.StackTrace
+        }, statusCode: 500);
+    }
+});
+
 app.MapControllers();
 
 app.Run();
 
-public partial class Program { }
+public partial class Program 
+{
+    public static string BuildNpgsqlConnectionString(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return "Host=localhost;Database=MafiaCorpDB;Username=postgres;Password=123";
+        }
+
+        raw = raw.Trim('"', '\'', ' ', '\t', '\r', '\n');
+
+        // Check if it's a URI format (postgres:// or postgresql://)
+        if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+            raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var uri = new Uri(raw);
+                var userInfo = uri.UserInfo.Split(':', 2);
+                var username = Uri.UnescapeDataString(userInfo[0]);
+                var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+                var host = uri.Host;
+                var port = uri.Port > 0 ? uri.Port : 5432;
+                var database = uri.AbsolutePath.TrimStart('/');
+
+                var builder = new Npgsql.NpgsqlConnectionStringBuilder
+                {
+                    Host = host,
+                    Port = port,
+                    Database = database,
+                    Username = username,
+                    Password = password,
+                    SslMode = Npgsql.SslMode.Require
+                };
+
+                return builder.ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Database Warning] Could not parse URI connection string: {ex.Message}. Falling back to raw string.");
+            }
+        }
+
+        // Key-value connection string (e.g. Host=...;Database=...)
+        try
+        {
+            var builder = new Npgsql.NpgsqlConnectionStringBuilder(raw);
+            if (!string.Equals(builder.Host, "localhost", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(builder.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            {
+                builder.SslMode = Npgsql.SslMode.Require;
+            }
+            return builder.ConnectionString;
+        }
+        catch
+        {
+            return raw;
+        }
+    }
+}

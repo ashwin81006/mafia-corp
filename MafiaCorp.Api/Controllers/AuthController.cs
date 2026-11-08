@@ -26,47 +26,75 @@ namespace MafiaCorp.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Username) || dto.Username.Length < 3)
-                return BadRequest("Username must be at least 3 characters.");
-
-            if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
-                return BadRequest("Password must be at least 6 characters.");
-
-            if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
-                return BadRequest("Username already exists.");
-
-            var user = new User
+            try
             {
-                Username = dto.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                CreatedAt = DateTime.UtcNow,
-                PlayerStats = new PlayerStats()
-            };
+                if (string.IsNullOrWhiteSpace(dto.Username) || dto.Username.Length < 3)
+                    return BadRequest(new { error = "Username must be at least 3 characters." });
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
+                    return BadRequest(new { error = "Password must be at least 6 characters." });
 
-            return Ok(new { message = "User registered successfully." });
+                if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
+                    return BadRequest(new { error = "Username already exists." });
+
+                var user = new User
+                {
+                    Username = dto.Username,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                    CreatedAt = DateTime.UtcNow,
+                    PlayerStats = new PlayerStats()
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "User registered successfully." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthController Register Error] {ex}");
+                return StatusCode(500, new
+                {
+                    error = "Database error during registration.",
+                    details = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == dto.Username);
-            
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized("Invalid credentials.");
+            try
+            {
+                var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == dto.Username);
+                
+                if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+                    return Unauthorized(new { error = "Invalid credentials." });
 
-            user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                user.LastLoginAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            var token = GenerateJwtToken(user);
-            return Ok(new { token });
+                var token = GenerateJwtToken(user);
+                return Ok(new { token });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthController Login Error] {ex}");
+                return StatusCode(500, new
+                {
+                    error = "Database error during login.",
+                    details = ex.Message,
+                    inner = ex.InnerException?.Message
+                });
+            }
         }
 
         private string GenerateJwtToken(User user)
         {
-            var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.");
+            var jwtKey = _configuration["Jwt:Key"] 
+                         ?? _configuration["Jwt__Key"] 
+                         ?? "SuperSecretKeyForMafiaCorpThatIsLongEnoughToNotThrowExceptions123!";
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -77,8 +105,8 @@ namespace MafiaCorp.Api.Controllers
             };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: _configuration["Jwt:Issuer"] ?? _configuration["Jwt__Issuer"] ?? "MafiaCorpApi",
+                audience: _configuration["Jwt:Audience"] ?? _configuration["Jwt__Audience"] ?? "MafiaCorpClients",
                 claims: claims,
                 expires: DateTime.UtcNow.AddDays(365),
                 signingCredentials: credentials);
