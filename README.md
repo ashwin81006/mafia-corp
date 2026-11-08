@@ -37,14 +37,14 @@ graph TD
 
     subgraph Backend ["Backend & Networking"]
         C["ASP.NET Core Web API<br/>(Port 5130)<br/>Auth, User Stats, Match Records"]
-        D["Java Netty Game Server<br/>(Port 54555)<br/>Raw TCP Socket Engine"]
-        E[("PostgreSQL Database<br/>(Port 5432)")]
+        D["Java WebSocket Game Server<br/>(Port 54555 / $PORT)<br/>WebSocket Engine (RFC 6455)"]
+        E[("PostgreSQL Database<br/>(Port 5432 / Neon.tech)")]
     end
 
     A -->|HTTP / REST (JWT)| C
-    A -->|Raw TCP (JSON Lines)| D
+    A -->|WebSocket wss://| D
     B -->|HTTP / REST| C
-    B -->|Raw TCP (JSON Lines)| D
+    B -->|WebSocket ws:// / wss://| D
     C -->|EF Core / Npgsql| E
     D -->|Internal Webhook POST| C
 ```
@@ -184,10 +184,29 @@ The Game Server will start listening for TCP connections on port `54555`.
 
 ---
 
+## 🚢 Free Cloud Deployment (Render.com + Neon.tech — No Credit Card)
 
+MafiaCorp includes a unified root `Dockerfile` that packages both the ASP.NET Core API and Java WebSocket Game Server behind an internal Nginx reverse proxy into **1 single free Web Service**.
 
+### 1. Get Free PostgreSQL Database
+1. Go to **[Neon.tech](https://neon.tech/)** and sign up (No credit card needed).
+2. Create a project (`mafiacorp-db`) and copy the connection string.
 
-## 🔌 Network Protocol & Configuration
+### 2. Deploy on Render.com
+1. Go to **[Render.com](https://render.com/)** and sign up with GitHub (No credit card needed).
+2. Click **New +** $\rightarrow$ **Web Service** and select your MafiaCorp repository.
+3. Render automatically detects the root `Dockerfile`. Set:
+   - **Instance Type**: **Free**
+   - **Environment Variables**:
+     - `ConnectionStrings__DefaultConnection` = *(Your Neon.tech connection string)*
+     - `InternalApiSecret` = `SuperSecretKeyForInternalJavaServer123!`
+4. Click **Deploy Web Service**.
+
+### 3. Keep Awake 24/7 (Prevent Sleep)
+Render free containers sleep after 15 minutes of inactivity. Since 1 service running 24/7 uses only 744 of your 750 monthly free hours, you can keep it awake 24/7 permanently for free:
+- Add a free monitor on **[cron-job.org](https://cron-job.org)** or **[UptimeRobot](https://uptimerobot.com)** pinging `https://<your-app>.onrender.com/health` every 10 minutes.
+
+---
 
 The Game Server uses a **JSON-over-TCP** framing protocol where each message is a single JSON line terminated by `\n`.
 

@@ -1,4 +1,3 @@
-import socket
 import json
 import time
 import urllib.request
@@ -8,8 +7,17 @@ import threading
 import sys
 import random
 
+try:
+    import websocket  # type: ignore
+except ImportError:
+    import site
+    for p in site.getsitepackages():
+        if p not in sys.path:
+            sys.path.append(p)
+    import websocket  # type: ignore
+
 API_URL = "http://localhost:5130"
-GAME_SERVER_PORT = 54555
+WS_URL = "ws://127.0.0.1:54555"
 
 def make_request(endpoint, payload=None, token=None):
     url = f"{API_URL}{endpoint}"
@@ -36,7 +44,7 @@ class Bot:
         self.username = username
         self.password = password
         self.room_code = room_code
-        self.socket = None
+        self.ws = None
         self.user_id = None
         self.token = None
         self.is_alive = True
@@ -55,29 +63,31 @@ class Bot:
         me_res = make_request("/api/users/me", token=self.token)
         self.user_id = me_res.get("id") if me_res else random.randint(100, 999)
         
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(('127.0.0.1', GAME_SERVER_PORT))
+        try:
+            self.ws = websocket.create_connection(WS_URL)
+        except Exception as e:
+            print(f"[{self.username}] Failed to connect to WebSocket: {e}")
+            return
         
         join_msg = {"type": "JOIN_ROOM", "roomCode": self.room_code, "username": self.username, "userId": str(self.user_id)}
-        self.socket.send((json.dumps(join_msg) + "\n").encode())
+        self.ws.send(json.dumps(join_msg))
         
         threading.Thread(target=self.listen_loop, daemon=True).start()
 
     def send(self, msg):
         try:
-            self.socket.send((json.dumps(msg) + "\n").encode())
+            if self.ws:
+                self.ws.send(json.dumps(msg))
         except:
             pass
 
     def listen_loop(self):
         while True:
             try:
-                data = self.socket.recv(4096).decode('utf-8')
+                data = self.ws.recv()
                 if not data: break
-                for line in data.strip().split('\n'):
-                    if line:
-                        msg = json.loads(line)
-                        self.handle_message(msg)
+                msg = json.loads(data)
+                self.handle_message(msg)
             except Exception:
                 break
 
@@ -135,14 +145,18 @@ class Bot:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python simulate_bots.py <ROOM_CODE> [NUM_BOTS]")
-        print("Example: python simulate_bots.py ABCD 4")
+        print("Usage: python simulate_bots.py <ROOM_CODE> [NUM_BOTS] [API_URL] [WS_URL]")
+        print("Example: python simulate_bots.py ABCD 5")
         sys.exit(1)
 
     room_code = sys.argv[1].upper()
     num_bots = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    if len(sys.argv) > 3:
+        API_URL = sys.argv[3]
+    if len(sys.argv) > 4:
+        WS_URL = sys.argv[4]
     
-    print(f"Deploying {num_bots} AI Bots to Room {room_code}...")
+    print(f"Deploying {num_bots} AI Bots to Room {room_code} via WebSocket ({WS_URL})...")
     
     bots = []
     for i in range(1, num_bots + 1):
