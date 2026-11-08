@@ -8,16 +8,23 @@ import sys
 import random
 
 try:
-    import websocket  # type: ignore
-except ImportError:
-    import site
-    for p in site.getsitepackages():
-        if p not in sys.path:
-            sys.path.append(p)
-    import websocket  # type: ignore
+    from websocket import create_connection  # type: ignore
+except (ImportError, AttributeError):
+    try:
+        from websocket._core import create_connection  # type: ignore
+    except (ImportError, AttributeError):
+        import site
+        for p in site.getsitepackages():
+            if p not in sys.path:
+                sys.path.append(p)
+        try:
+            from websocket import create_connection  # type: ignore
+        except (ImportError, AttributeError):
+            from websocket._core import create_connection  # type: ignore
 
-API_URL = "http://localhost:5130"
-WS_URL = "ws://127.0.0.1:54555"
+# Default to the live Render deployment
+API_URL = "https://mafia-corp.onrender.com"
+WS_URL = "wss://mafia-corp.onrender.com/ws"
 
 def make_request(endpoint, payload=None, token=None):
     url = f"{API_URL}{endpoint}"
@@ -64,7 +71,7 @@ class Bot:
         self.user_id = me_res.get("id") if me_res else random.randint(100, 999)
         
         try:
-            self.ws = websocket.create_connection(WS_URL)
+            self.ws = create_connection(WS_URL)
         except Exception as e:
             print(f"[{self.username}] Failed to connect to WebSocket: {e}")
             return
@@ -145,16 +152,20 @@ class Bot:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python simulate_bots.py <ROOM_CODE> [NUM_BOTS] [API_URL] [WS_URL]")
+        print("Usage: python simulate_bots.py <ROOM_CODE> [NUM_BOTS] [--local | API_URL WS_URL]")
         print("Example: python simulate_bots.py ABCD 5")
         sys.exit(1)
 
     room_code = sys.argv[1].upper()
-    num_bots = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    if len(sys.argv) > 3:
+    num_bots = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 5
+
+    if "--local" in sys.argv:
+        API_URL = "http://localhost:5130"
+        WS_URL = "ws://127.0.0.1:54555"
+    elif len(sys.argv) > 3 and sys.argv[3].startswith("http"):
         API_URL = sys.argv[3]
-    if len(sys.argv) > 4:
-        WS_URL = sys.argv[4]
+        if len(sys.argv) > 4:
+            WS_URL = sys.argv[4]
     
     print(f"Deploying {num_bots} AI Bots to Room {room_code} via WebSocket ({WS_URL})...")
     
