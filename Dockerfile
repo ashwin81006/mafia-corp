@@ -96,13 +96,19 @@ sed -i "s/PORT_PLACEHOLDER/$PORT/g" /etc/nginx/nginx.conf\n\
 nginx\n\
 export ASPNETCORE_URLS="http://127.0.0.1:5130"\n\
 export DOTNET_gcServer=0\n\
-dotnet /app/api/MafiaCorp.Api.dll &\n\
+export Jwt__Key="${Jwt__Key:-SuperSecretKeyForMafiaCorpThatIsLongEnoughToNotThrowExceptions123!}"\n\
+export Jwt__Issuer="${Jwt__Issuer:-MafiaCorpApi}"\n\
+export Jwt__Audience="${Jwt__Audience:-MafiaCorpClients}"\n\
+export InternalApiSecret="${InternalApiSecret:-SuperSecretKeyForInternalJavaServer123!}"\n\
+echo "Starting .NET API on internal port 5130..."\n\
+(cd /app/api && dotnet MafiaCorp.Api.dll) &\n\
 API_PID=$!\n\
 export HOST="127.0.0.1"\n\
 export PORT="54555"\n\
 export API_URL="http://127.0.0.1:5130"\n\
 export JAVA_OPTS="-Xms64m -Xmx200m -XX:+UseSerialGC"\n\
-java $JAVA_OPTS -jar /app/gameserver/server.jar &\n\
+echo "Starting Java WebSocket GameServer on internal port 54555..."\n\
+(cd /app/gameserver && java $JAVA_OPTS -jar server.jar) &\n\
 JAVA_PID=$!\n\
 trap "kill -TERM $API_PID $JAVA_PID; nginx -s quit" SIGINT SIGTERM\n\
 wait -n $API_PID $JAVA_PID\n\
@@ -110,4 +116,3 @@ wait -n $API_PID $JAVA_PID\n\
 
 EXPOSE 10000
 ENTRYPOINT ["/app/entrypoint.sh"]
-

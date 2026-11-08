@@ -47,7 +47,9 @@ builder.Services.AddDbContext<MafiaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Setup Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
+var jwtKey = builder.Configuration["Jwt:Key"] 
+             ?? builder.Configuration["Jwt__Key"] 
+             ?? "SuperSecretKeyForMafiaCorpThatIsLongEnoughToNotThrowExceptions123!";
 var key = Encoding.UTF8.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
@@ -57,16 +59,16 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // For local dev
+    options.RequireHttpsMetadata = false; // For local and container reverse proxies
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? builder.Configuration["Jwt__Issuer"] ?? "MafiaCorpApi",
         ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["Jwt__Audience"] ?? "MafiaCorpClients",
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
@@ -74,17 +76,27 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Automatically apply EF Core database migrations on startup if connected
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    try
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MafiaCorp API v1");
-    });
+        var db = scope.ServiceProvider.GetRequiredService<MafiaDbContext>();
+        db.Database.Migrate();
+        Console.WriteLine("[Database] Migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Database Migration Notice] {ex.Message}");
+    }
 }
 
-app.UseHttpsRedirection();
+// Enable Swagger UI across all environments for easy testing
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MafiaCorp API v1");
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
